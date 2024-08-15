@@ -1,7 +1,5 @@
-//use std::ffi::CString;
 use std::io;
-//use std::io::empty;
-//use std::io::prelude::*;
+
 
 fn main() {
     let mut input = String::new();
