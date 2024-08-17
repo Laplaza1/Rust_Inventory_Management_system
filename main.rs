@@ -1,4 +1,5 @@
 use std::io;
+use std::process::exit;
 use serde_json::{from_str, to_string};
 use serde::{Deserialize, Serialize};
 use serde::de::Unexpected::Str;
@@ -14,7 +15,8 @@ struct Todo {
 
 
 fn main() {
-    check_json(1.to_string())
+    input_loop("Do you want to check Inventory?")
+
 
 
 
@@ -48,19 +50,22 @@ fn check_json(input:String){
 
 
 
-fn input_loop() {
+fn input_loop(question:&str) {
     let mut input = String::new();
-    let x: String = String::from("Lebron James");
 
-    println!("{}", "Who is the Greatest basketball player in the world");
+
+    println!("{} or type quit to terminate program", question );
     loop {
         io::stdin().read_line(&mut input)
             .expect("Failed to read line");
-        println!("{}", input.trim() == x);
+        println!("\n");
         //assert_eq!(input.trim(),x);
-        match input.trim().eq(&x.to_string()) {
-            true => println!("Correct!!"),
-            _ => println!("Not Correct")
+        match input.trim(){
+            "yes" =>{input.clear();println!("{}","Please type the Value you want to check; It is case sensitive.");io::stdin().read_line(&mut input)
+                .expect("Failed to read line");check_json(input.trim().to_string());println!("{}",question)} ,
+            "no" => println!("Do you want to adjust inventory?"),
+            "quit"=> {println!("{}","Now quitting!");exit(0);},
+            _ => {println!("{}",question)}
         }
         input.clear();
     }
