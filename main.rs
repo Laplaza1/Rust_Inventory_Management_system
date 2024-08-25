@@ -23,12 +23,6 @@ struct Todo {
 
 fn main() {
     input_loop("Do you want to check Inventory?")
-   //add_to_inventory()
-
-
-
-
-
 }
 
 
