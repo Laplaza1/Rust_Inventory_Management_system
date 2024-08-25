@@ -1,18 +1,15 @@
 use io::stdin;
-use std::collections::HashMap;
-
+use path::absolute;
 use std::fmt::{Binary, Debug};
-use std::io;
+use std::{io, path, str};
 use std::process::{exit};
-use serde_json::{from_str};
+use serde_json::{from_str, to_string_pretty};
 use serde::{Deserialize, Serialize, Serializer};
-
-use serde_json::Value;
-
 use std::fs::{File, OpenOptions};
-use std::io::{Read, Write};
+use std::io::{Read,Write};
+use serde::__private::de::{IdentifierDeserializer};
+use serde::de::IntoDeserializer;
 use serde::ser::SerializeStruct;
-
 
 #[derive(Deserialize, Serialize,Debug)]
 struct Todo {
@@ -75,7 +72,7 @@ fn input_loop(question:&str) {
                 println!("{}",question)
             } ,
 
-            "no" => {println!("Do you want to adjust inventory? yes or no");input.clear() ;
+            "no" => {println!("Do you want to add to inventory? yes or no");input.clear() ;
                 stdin().read_line(&mut input).expect("Failed to read line");
 
                 if input.trim().eq("yes") {
@@ -109,6 +106,48 @@ fn input_loop(question:&str) {
 
                 }
             "quit"=> {println!("{}","Now quitting!");exit(0);},
+
+            "adjust"=> {println!("Please enter what value you want to replace excluding ID because It must remain immutable");input.clear();
+                 stdin().read_line(&mut input).expect("Failed to read line");
+
+                match input.trim() {
+
+                  //Creates the user_id var
+                "user_id" =>    {
+                    println!("Please type the old value you want to adjust");
+                    let _key_ = input.trim();
+                    let mut _old_val :String = String::new();
+                    stdin().read_line(&mut _old_val).expect("Failed to read line");
+                    println!("Please type the new value you want to adjust");
+                    let mut _new_val :String = String::new();
+                    stdin().read_line(&mut _new_val).expect("Failed to read line");
+                    adjust_inventory(_key_.to_string(), _old_val, _new_val);break},
+
+
+                  //Creates the title var
+                "title" => {
+
+                    println!("Please type the title");
+                    println!("Please type the old value you want to adjust");
+                    let mut _key_: &str = &*input.trim();
+                    let mut _old_val :String = String::new();
+                    stdin().read_line(&mut _old_val).expect("Failed to read line");
+                    println!("Please type the new value you want to adjust");
+                    let mut _new_val :String = String::new();
+                    stdin().read_line(&mut _new_val).expect("Failed to read line");
+                    adjust_inventory(_key_.trim().to_string(), _old_val.trim().to_string(), _new_val.trim().to_string());break},
+
+                _ => {
+                    println!("{}","not correct please enter the correct fields");
+                    break
+                },
+
+
+                }}
+
+
+
+
             _ => {println!("{}",question);input.clear()}
             }
 
@@ -123,9 +162,8 @@ fn input_loop(question:&str) {
 
 
 fn add_to_inventory(_user_id:&str, _id:&str, _title:&str, _completed:&str) {
-    let path = "C:/Users/L1K3A/RustroverProjects/Rust_Inventory_check/src/todos.json";
-    let json = std::fs::read_to_string("src/todos.json").unwrap();
-    let todos = from_str::<Vec<Todo>>(&json).unwrap();
+    let pathbuffer = path::PathBuf::from("src/todos.json");
+    let path:String = absolute(pathbuffer).as_deref().unwrap().to_str().unwrap().to_string();
 
     println!("{}{}{}{}",_user_id.to_string(),_id,_title,_completed);
 
@@ -133,18 +171,18 @@ fn add_to_inventory(_user_id:&str, _id:&str, _title:&str, _completed:&str) {
     let mut m =OpenOptions::new()
         .write(true)
         .append(true)
-        .open(path).unwrap();
-    let serialized = serde_json::to_string_pretty(&book)
+        .open(&*path).unwrap();
+    let serialized =to_string_pretty(&book)
         .expect("Failed to serialize JSON");
     let comma:String = ",".to_string();
     let eof:String = "]".to_string();
     let neo_serialized:String = comma+ &*serialized + &*eof;
-    let mut file = File::open(path).unwrap();
+    let mut file = File::open(&*path).unwrap();
     let mut contents =String::new();
     file.read_to_string(&mut contents).unwrap();
     if let Some(pos) = contents.rfind(']'){contents.remove(pos);
     }
-    let mut file = File::create(path).unwrap();
+    let mut file = File::create(&*path).unwrap();
     file.write_all(contents.as_bytes()).expect("TODO: panic message");
     m.write_all(neo_serialized.as_bytes()).expect("TODO: panic message");
 
@@ -156,23 +194,112 @@ fn add_to_inventory(_user_id:&str, _id:&str, _title:&str, _completed:&str) {
 
 }
 
-fn adjust_inventory(){
-    let mut todo: HashMap<String,Value> = serde_json::from_str(r#"{"id": 2}"#).expect("unable to parse JSON");
+fn adjust_inventory(_key_:String, old_val:String, mut new_val:String) {
+    let json = std::fs::read_to_string("src/todos.json").unwrap();
+    let todos = from_str::<Vec<Todo>>(&json).unwrap();
+    //let path: &str = "C:/Users/L1K3A/RustroverProjects/Rust_Inventory_check/src/todos.json";
+    let pathbuffer = path::PathBuf::from("src/todos.json");
+    let path:String = absolute(pathbuffer).as_deref().unwrap().to_str().unwrap().to_string();
+    let mut m = OpenOptions::new()
+        .write(true)
+        .append(false)
+        .open(&*path).unwrap();
+    let mut file = File::open(&*path).unwrap();
+    let mut contents = String::new();
+    file.read_to_string(&mut contents).unwrap();
+    let mut counter: usize = 0;
+    println!("{old_val}");
 
-    if let Some(mut id) = todo["id"].as_u64(){id +=1;
-    todo.insert("id".to_string(),Value::from(id));
-    }else { panic!("Id is missing or not a number");
+
+    for mut item in todos {
+        println!("{counter}");
+        println!("old val {}\ncomparison {}\nitem user id val {}", old_val.trim(), item.user_id.to_string().eq(&old_val.trim()), item.user_id.to_string());
+        println!("*********************************************");
+
+        match _key_.as_str() {
+            "user_id" => if item.user_id.to_string().eq(&old_val.trim())
+            {
+                println!("{:#?}", item);
+                file.read_to_string(&mut contents).unwrap();
+                let mut todoer = from_str::<Vec<Todo>>(&json).unwrap();
+                let new_new_val: String = new_val.to_string();
+                println!("{new_new_val}");
+                todoer[counter].user_id = (*new_new_val).trim().parse().unwrap();
+                println!("{:?}", todoer[counter].user_id);
+                let trial: String = to_string_pretty(&todoer).unwrap();
+                m.write_all(trial.as_bytes()).expect("TODO: panic message");
+            },
+
+            "id" => if item.id.to_string().eq(&old_val.trim())
+            {
+                println!("{:#?}", item);
+                file.read_to_string(&mut contents).unwrap();
+                let mut todoer = from_str::<Vec<Todo>>(&json).unwrap();
+                todoer[counter].id = new_val.trim().parse().unwrap();
+                println!("{:?}", todoer[counter].id);
+                let trial: String = to_string_pretty(&todoer).unwrap();
+                m.write_all(trial.as_bytes()).expect("TODO: panic message");
+            }
+
+            "title" => if item.title.to_string().eq(&old_val.trim())
+            {
+                println!("{:#?}", item);
+                file.read_to_string(&mut contents).unwrap();
+                let mut todoer = from_str::<Vec<Todo>>(&json).unwrap();
+                todoer[counter].title = new_val.parse().unwrap();
+                println!("{:?}", todoer[counter].title);
+                let trial: String = to_string_pretty(&todoer).unwrap();
+                m.write_all(trial.as_bytes()).expect("TODO: panic message");
+            },
+
+            "completed" => if item.completed.to_string().eq(&old_val.trim())
+            {
+                println!("{:#?}", item);
+                file.read_to_string(&mut contents).unwrap();
+                let mut todoer = from_str::<Vec<Todo>>(&json).unwrap();
+                todoer[counter].completed = new_val.parse().unwrap();
+                println!("{:?}", todoer[counter].completed);
+                let trial: String = to_string_pretty(&todoer).unwrap();
+                m.write_all(trial.as_bytes()).expect("TODO: panic message");
+            },
+
+            _ => if item.user_id.to_string().eq(&old_val)
+            {
+                println!("{:#?}", item);
+            },
+        }
+        counter += 1;
     }
 
-    println!(
-        "{}",serde_json::to_string(&todo).expect("unable to serialize"));
 
-
-
-
-
+    let mut file = File::open(path).unwrap();
+    let mut contents = String::new();
+    file.read_to_string(&mut contents).unwrap();
 }
 
 
+fn check_len_of_item_json() {
+    let json = std::fs::read_to_string("src/todos.json").unwrap();
+    let todos = from_str::<Vec<Todo>>(&json).unwrap();
+    let mut item_count:usize = 0;
 
+    for item in todos {
 
+        println!("This is the index {item_count} of the Todo variable",);
+        println!("Key {}---Value {}", "userId".to_string().len(),item.user_id.to_string().len() );
+        println!("Key {}---Value {}", "Id".to_string().len(), item.id.to_string().len());
+        println!("Key {}---Value {}", "title".to_string().len(), item.title.to_string().len());
+        println!("Key {}---Value {}", "completed".to_string().len(), item.completed.to_string().len());
+        item_count += 1;
+
+    }
+}
+fn check_old_val_pos(old_val:&str){
+    let pathbuffer = path::PathBuf::from("src/todos.json");
+    let path:String = absolute(pathbuffer).as_deref().unwrap().to_str().unwrap().to_string();
+    let mut file = File::open(path).unwrap();
+    let mut contents = String::new();
+    file.read_to_string(&mut contents).unwrap();
+    let user_id__: Option<usize> = contents.rfind(&*old_val);
+    println!("{}",user_id__.unwrap());
+}
